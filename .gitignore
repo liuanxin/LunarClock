@@ -1,0 +1,32 @@
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Android Studio / local machine
+.idea/
+*.iml
+local.properties
+
+# Build outputs
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Local Gradle distributions
+gradle/wrapper/gradle-*-bin.zip
+gradle/wrapper/gradle-*-all.zip
+
+# Signing material
+keystore.properties
+keystore/
+*.jks
+*.keystore
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

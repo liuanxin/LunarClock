@@ -1,0 +1,63 @@
+
+plugins {
+    id "com.android.application"
+}
+
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+def hasReleaseKeystore = keystorePropertiesFile.exists()
+if (hasReleaseKeystore) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
+android {
+    namespace "io.github.liuanxin.lunarclock"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "io.github.liuanxin.lunarclock"
+        minSdk 24
+        targetSdk 36
+        versionCode 1
+        versionName "1.0"
+    }
+
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            release {
+                storeFile rootProject.file(keystoreProperties["storeFile"] ?: "keystore/lunarclock-release.jks")
+                storePassword keystoreProperties["storePassword"] ?: ""
+                keyAlias keystoreProperties["keyAlias"] ?: "lunarclock"
+                keyPassword keystoreProperties["keyPassword"] ?: ""
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            if (hasReleaseKeystore) {
+                signingConfig signingConfigs.release
+            }
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+        debug {
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+}
+
+dependencies {
+    implementation "androidx.core:core-ktx:1.18.0"
+    implementation "androidx.appcompat:appcompat:1.7.1"
+    constraints {
+        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0") {
+            because "Keep Kotlin stdlib artifacts aligned across AndroidX transitive dependencies."
+        }
+        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.0") {
+            because "Keep Kotlin stdlib artifacts aligned across AndroidX transitive dependencies."
+        }
+    }
+}
