@@ -16,6 +16,13 @@
 - 无后台服务、无轮询、无 WorkManager。
 - 无 Launcher 图标，安装后从系统“小部件”入口添加。
 
+## 截图
+
+<p>
+  <img src="docs/images/widget-picker-preview.webp" alt="小部件选择器预览" width="360">
+  <img src="docs/images/home-screen-widget.webp" alt="桌面效果" width="360">
+</p>
+
 ## 环境
 
 - Android Studio
