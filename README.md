@@ -18,10 +18,13 @@
 
 ## 截图
 
-<p>
-  <img src="docs/images/widget-picker-preview.webp" alt="小部件选择器预览" width="360">
-  <img src="docs/images/home-screen-widget.webp" alt="桌面效果" width="360">
-</p>
+小部件选择器预览：
+
+<img src="docs/images/widget-picker-preview.webp" alt="小部件选择器预览" width="480">
+
+桌面实际效果：
+
+<img src="docs/images/home-screen-widget.webp" alt="桌面实际效果" width="480">
 
 ## 环境
 
