@@ -138,19 +138,45 @@ adb uninstall io.github.liuanxin.lunarclock
 
 ## Google Play 发布考虑
 
-如果要发布到 Google Play，建议：
+如果要发布到 Google Play，建议上传 AAB，而不是 APK。
 
-- 使用自己的正式 release keystore，并长期妥善保存。
-- 增加 `versionCode` / `versionName` 管理。
-- 生成 AAB：
+当前版本：
+
+```text
+versionCode 10000
+versionName 1.0.0
+```
+
+发布前确认已经配置本地 release keystore，然后生成 AAB：
 
 ```bash
 ./gradlew :app:bundleRelease
 ```
 
-- 准备隐私政策说明：应用不联网、不收集数据、不请求敏感权限。
-- 准备应用截图：桌面小部件预览、实际桌面效果。
+产物路径：
+
+```text
+app/build/outputs/bundle/release/app-release.aab
+```
+
+Play Console 中建议先走内部测试：
+
+1. 创建应用，应用名可用“农历时钟”。
+2. 填写应用内容、数据安全、内容分级、目标用户群体、广告声明。
+3. 声明应用不联网、不收集数据、不共享数据、无广告。
+4. 上传 `app-release.aab` 到内部测试轨道。
+5. 用测试账号安装验证小部件添加、时间刷新、点击时钟、点击日历。
+6. 验证无误后再提交正式版审核。
+
+正式发布需要准备：
+
+- 512x512 应用图标。
+- 1024x500 功能图。
+- 手机截图，建议包含小部件选择器和桌面实际效果。
+- 隐私政策页面，说明应用离线运行、不收集数据、不请求网络权限。
 - 保持包名不变：`io.github.liuanxin.lunarclock`。
+
+后续每次更新都必须增加 `versionCode`，例如 `10001`、`10002`；`versionName` 可以按语义版本递增，例如 `1.0.1`、`1.1.0`。
 
 ## 设计原则
 
