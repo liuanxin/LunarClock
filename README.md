@@ -143,8 +143,8 @@ adb uninstall io.github.liuanxin.lunarclock
 当前版本：
 
 ```text
-versionCode 10000
-versionName 1.0.0
+versionCode 10001
+versionName 1.0.1
 ```
 
 发布前确认已经配置本地 release keystore，然后生成 AAB：
@@ -184,4 +184,4 @@ Play Console 中建议先走内部测试：
 - 时间优先，农历信息作为补充。
 - 矮高度时只显示大时间，避免文字被裁剪。
 - 高度足够时显示完整日期、农历、星期。
-- 所有刷新都依赖系统 App Widget / 系统广播 / `TextClock`，不做后台常驻。
+- 所有刷新都依赖系统 App Widget / 系统广播 / `TextClock`；跨天刷新用一次性 `AlarmManager` 兜底，不做后台常驻或轮询。

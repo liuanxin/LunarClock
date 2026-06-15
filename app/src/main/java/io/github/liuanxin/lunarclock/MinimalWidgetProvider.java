@@ -35,7 +35,8 @@ public final class MinimalWidgetProvider extends AppWidgetProvider {
         if (Intent.ACTION_DATE_CHANGED.equals(action)
                 || Intent.ACTION_TIME_CHANGED.equals(action)
                 || Intent.ACTION_TIMEZONE_CHANGED.equals(action)
-                || Intent.ACTION_SCREEN_ON.equals(action)
+                || Intent.ACTION_BOOT_COMPLETED.equals(action)
+                || Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)
                 || ACTION_REFRESH_DATE.equals(action)) {
             Calendar now = Calendar.getInstance();
             String currentDate = dateKey(now);
