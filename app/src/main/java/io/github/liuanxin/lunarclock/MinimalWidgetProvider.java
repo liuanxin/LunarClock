@@ -23,7 +23,8 @@ public final class MinimalWidgetProvider extends AppWidgetProvider {
     private static final String PREFS_NAME = "minimal_widget";
     private static final String KEY_LAST_RENDERED_DATE = "last_rendered_date";
     private static final String ACTION_REFRESH_DATE = "io.github.liuanxin.lunarclock.action.REFRESH_DATE";
-    private static final int REQUEST_REFRESH_DATE = 1001;
+    private static final int REQUEST_REFRESH_DATE_PRIMARY = 1001;
+    private static final int REQUEST_REFRESH_DATE_FALLBACK = 1002;
 
     private static final String[] WEEK_NAMES = {
             "周日", "周一", "周二", "周三", "周四", "周五", "周六"
@@ -44,7 +45,7 @@ public final class MinimalWidgetProvider extends AppWidgetProvider {
                     .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                     .getString(KEY_LAST_RENDERED_DATE, null);
             scheduleNextDateRefresh(context, now);
-            if (currentDate.equals(lastRenderedDate)) {
+            if (currentDate.equals(lastRenderedDate) && !shouldForceUpdate(action)) {
                 return;
             }
             AppWidgetManager manager = AppWidgetManager.getInstance(context);
@@ -168,17 +169,41 @@ public final class MinimalWidgetProvider extends AppWidgetProvider {
         if (alarmManager == null) {
             return;
         }
-        Calendar next = (Calendar) now.clone();
-        next.add(Calendar.DAY_OF_MONTH, 1);
-        next.set(Calendar.HOUR_OF_DAY, 0);
-        next.set(Calendar.MINUTE, 0);
-        next.set(Calendar.SECOND, 3);
-        next.set(Calendar.MILLISECOND, 0);
+        scheduleDateRefresh(
+                alarmManager,
+                context,
+                nextDateRefreshTime(now, 0, 3),
+                REQUEST_REFRESH_DATE_PRIMARY
+        );
+        scheduleDateRefresh(
+                alarmManager,
+                context,
+                nextDateRefreshTime(now, 6, 0),
+                REQUEST_REFRESH_DATE_FALLBACK
+        );
+    }
+
+    private static void scheduleDateRefresh(
+            AlarmManager alarmManager,
+            Context context,
+            long triggerAtMillis,
+            int requestCode
+    ) {
         alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
-                next.getTimeInMillis(),
-                refreshDatePendingIntent(context)
+                triggerAtMillis,
+                refreshDatePendingIntent(context, requestCode)
         );
+    }
+
+    private static long nextDateRefreshTime(Calendar now, int hour, int minute) {
+        Calendar next = (Calendar) now.clone();
+        next.add(Calendar.DAY_OF_MONTH, 1);
+        next.set(Calendar.HOUR_OF_DAY, hour);
+        next.set(Calendar.MINUTE, minute);
+        next.set(Calendar.SECOND, 3);
+        next.set(Calendar.MILLISECOND, 0);
+        return next.getTimeInMillis();
     }
 
     private static void cancelNextDateRefresh(Context context) {
@@ -186,18 +211,25 @@ public final class MinimalWidgetProvider extends AppWidgetProvider {
         if (alarmManager == null) {
             return;
         }
-        alarmManager.cancel(refreshDatePendingIntent(context));
+        alarmManager.cancel(refreshDatePendingIntent(context, REQUEST_REFRESH_DATE_PRIMARY));
+        alarmManager.cancel(refreshDatePendingIntent(context, REQUEST_REFRESH_DATE_FALLBACK));
     }
 
-    private static PendingIntent refreshDatePendingIntent(Context context) {
+    private static PendingIntent refreshDatePendingIntent(Context context, int requestCode) {
         Intent intent = new Intent(context, MinimalWidgetProvider.class)
                 .setAction(ACTION_REFRESH_DATE);
         return PendingIntent.getBroadcast(
                 context,
-                REQUEST_REFRESH_DATE,
+                requestCode,
                 intent,
                 pendingIntentFlags()
         );
+    }
+
+    private static boolean shouldForceUpdate(String action) {
+        return Intent.ACTION_TIME_CHANGED.equals(action)
+                || Intent.ACTION_TIMEZONE_CHANGED.equals(action)
+                || Intent.ACTION_MY_PACKAGE_REPLACED.equals(action);
     }
 
     private static void applyTextSizes(RemoteViews views, Bundle options) {
