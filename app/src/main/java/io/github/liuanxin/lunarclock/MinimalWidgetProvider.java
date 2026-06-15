@@ -23,8 +23,7 @@ public final class MinimalWidgetProvider extends AppWidgetProvider {
     private static final String PREFS_NAME = "minimal_widget";
     private static final String KEY_LAST_RENDERED_DATE = "last_rendered_date";
     private static final String ACTION_REFRESH_DATE = "io.github.liuanxin.lunarclock.action.REFRESH_DATE";
-    private static final int REQUEST_REFRESH_DATE_PRIMARY = 1001;
-    private static final int REQUEST_REFRESH_DATE_FALLBACK = 1002;
+    private static final int REQUEST_REFRESH_DATE = 1001;
 
     private static final String[] WEEK_NAMES = {
             "周日", "周一", "周二", "周三", "周四", "周五", "周六"
@@ -169,38 +168,18 @@ public final class MinimalWidgetProvider extends AppWidgetProvider {
         if (alarmManager == null) {
             return;
         }
-        scheduleDateRefresh(
-                alarmManager,
-                context,
-                nextDateRefreshTime(now, 0, 3),
-                REQUEST_REFRESH_DATE_PRIMARY
-        );
-        scheduleDateRefresh(
-                alarmManager,
-                context,
-                nextDateRefreshTime(now, 6, 0),
-                REQUEST_REFRESH_DATE_FALLBACK
-        );
-    }
-
-    private static void scheduleDateRefresh(
-            AlarmManager alarmManager,
-            Context context,
-            long triggerAtMillis,
-            int requestCode
-    ) {
         alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
-                triggerAtMillis,
-                refreshDatePendingIntent(context, requestCode)
+                nextDateRefreshTime(now),
+                refreshDatePendingIntent(context)
         );
     }
 
-    private static long nextDateRefreshTime(Calendar now, int hour, int minute) {
+    private static long nextDateRefreshTime(Calendar now) {
         Calendar next = (Calendar) now.clone();
         next.add(Calendar.DAY_OF_MONTH, 1);
-        next.set(Calendar.HOUR_OF_DAY, hour);
-        next.set(Calendar.MINUTE, minute);
+        next.set(Calendar.HOUR_OF_DAY, 0);
+        next.set(Calendar.MINUTE, 0);
         next.set(Calendar.SECOND, 3);
         next.set(Calendar.MILLISECOND, 0);
         return next.getTimeInMillis();
@@ -211,16 +190,15 @@ public final class MinimalWidgetProvider extends AppWidgetProvider {
         if (alarmManager == null) {
             return;
         }
-        alarmManager.cancel(refreshDatePendingIntent(context, REQUEST_REFRESH_DATE_PRIMARY));
-        alarmManager.cancel(refreshDatePendingIntent(context, REQUEST_REFRESH_DATE_FALLBACK));
+        alarmManager.cancel(refreshDatePendingIntent(context));
     }
 
-    private static PendingIntent refreshDatePendingIntent(Context context, int requestCode) {
+    private static PendingIntent refreshDatePendingIntent(Context context) {
         Intent intent = new Intent(context, MinimalWidgetProvider.class)
                 .setAction(ACTION_REFRESH_DATE);
         return PendingIntent.getBroadcast(
                 context,
-                requestCode,
+                REQUEST_REFRESH_DATE,
                 intent,
                 pendingIntentFlags()
         );
