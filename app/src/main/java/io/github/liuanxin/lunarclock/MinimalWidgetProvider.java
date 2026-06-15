@@ -1,6 +1,7 @@
 package io.github.liuanxin.lunarclock;
 
 import android.app.PendingIntent;
+import android.app.AlarmManager;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
@@ -19,33 +20,58 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 public final class MinimalWidgetProvider extends AppWidgetProvider {
+    private static final String PREFS_NAME = "minimal_widget";
+    private static final String KEY_LAST_RENDERED_DATE = "last_rendered_date";
+    private static final String ACTION_REFRESH_DATE = "io.github.liuanxin.lunarclock.action.REFRESH_DATE";
+    private static final int REQUEST_REFRESH_DATE = 1001;
+
     private static final String[] WEEK_NAMES = {
             "周日", "周一", "周二", "周三", "周四", "周五", "周六"
     };
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        super.onReceive(context, intent);
         String action = intent == null ? null : intent.getAction();
         if (Intent.ACTION_DATE_CHANGED.equals(action)
                 || Intent.ACTION_TIME_CHANGED.equals(action)
-                || Intent.ACTION_TIMEZONE_CHANGED.equals(action)) {
+                || Intent.ACTION_TIMEZONE_CHANGED.equals(action)
+                || Intent.ACTION_SCREEN_ON.equals(action)
+                || ACTION_REFRESH_DATE.equals(action)) {
+            Calendar now = Calendar.getInstance();
+            String currentDate = dateKey(now);
+            String lastRenderedDate = context
+                    .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    .getString(KEY_LAST_RENDERED_DATE, null);
+            scheduleNextDateRefresh(context, now);
+            if (currentDate.equals(lastRenderedDate)) {
+                return;
+            }
             AppWidgetManager manager = AppWidgetManager.getInstance(context);
             ComponentName component = new ComponentName(context, MinimalWidgetProvider.class);
             int[] widgetIds = manager.getAppWidgetIds(component);
             if (widgetIds != null && widgetIds.length > 0) {
-                onUpdate(context, manager, widgetIds);
+                forceUpdateAppWidgets(context, manager, widgetIds, now);
             }
+            return;
         }
+        super.onReceive(context, intent);
     }
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         Calendar now = Calendar.getInstance();
-        for (int widgetId : appWidgetIds) {
-            Bundle options = appWidgetManager.getAppWidgetOptions(widgetId);
-            appWidgetManager.updateAppWidget(widgetId, buildViews(context, now, widgetId, options));
-        }
+        forceUpdateAppWidgets(context, appWidgetManager, appWidgetIds, now);
+        scheduleNextDateRefresh(context, now);
+    }
+
+    @Override
+    public void onEnabled(Context context) {
+        scheduleNextDateRefresh(context, Calendar.getInstance());
+    }
+
+    @Override
+    public void onDisabled(Context context) {
+        cancelNextDateRefresh(context);
     }
 
     @Override
@@ -55,13 +81,16 @@ public final class MinimalWidgetProvider extends AppWidgetProvider {
             int appWidgetId,
             Bundle newOptions
     ) {
+        Calendar now = Calendar.getInstance();
         appWidgetManager.updateAppWidget(
                 appWidgetId,
-                buildViews(context, Calendar.getInstance(), appWidgetId, newOptions)
+                buildViews(context, now, appWidgetId, newOptions)
         );
+        saveLastRenderedDate(context, now);
+        scheduleNextDateRefresh(context, now);
     }
 
-    private RemoteViews buildViews(Context context, Calendar now, int widgetId, Bundle options) {
+    private static RemoteViews buildViews(Context context, Calendar now, int widgetId, Bundle options) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
         int year = now.get(Calendar.YEAR);
         int month = now.get(Calendar.MONTH) + 1;
@@ -100,6 +129,74 @@ public final class MinimalWidgetProvider extends AppWidgetProvider {
                 )
         );
         return views;
+    }
+
+    private static void forceUpdateAppWidgets(
+            Context context,
+            AppWidgetManager appWidgetManager,
+            int[] appWidgetIds,
+            Calendar now
+    ) {
+        for (int widgetId : appWidgetIds) {
+            Bundle options = appWidgetManager.getAppWidgetOptions(widgetId);
+            appWidgetManager.updateAppWidget(widgetId, buildViews(context, now, widgetId, options));
+        }
+        saveLastRenderedDate(context, now);
+    }
+
+    private static void saveLastRenderedDate(Context context, Calendar now) {
+        context
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_LAST_RENDERED_DATE, dateKey(now))
+                .apply();
+    }
+
+    private static String dateKey(Calendar now) {
+        return String.format(
+                Locale.CHINA,
+                "%04d%02d%02d",
+                now.get(Calendar.YEAR),
+                now.get(Calendar.MONTH) + 1,
+                now.get(Calendar.DAY_OF_MONTH)
+        );
+    }
+
+    private static void scheduleNextDateRefresh(Context context, Calendar now) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) {
+            return;
+        }
+        Calendar next = (Calendar) now.clone();
+        next.add(Calendar.DAY_OF_MONTH, 1);
+        next.set(Calendar.HOUR_OF_DAY, 0);
+        next.set(Calendar.MINUTE, 0);
+        next.set(Calendar.SECOND, 3);
+        next.set(Calendar.MILLISECOND, 0);
+        alarmManager.setAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                next.getTimeInMillis(),
+                refreshDatePendingIntent(context)
+        );
+    }
+
+    private static void cancelNextDateRefresh(Context context) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) {
+            return;
+        }
+        alarmManager.cancel(refreshDatePendingIntent(context));
+    }
+
+    private static PendingIntent refreshDatePendingIntent(Context context) {
+        Intent intent = new Intent(context, MinimalWidgetProvider.class)
+                .setAction(ACTION_REFRESH_DATE);
+        return PendingIntent.getBroadcast(
+                context,
+                REQUEST_REFRESH_DATE,
+                intent,
+                pendingIntentFlags()
+        );
     }
 
     private static void applyTextSizes(RemoteViews views, Bundle options) {
