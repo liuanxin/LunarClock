@@ -3,6 +3,9 @@
 build/
 **/build/
 
+# Kotlin build cache
+.kotlin/
+
 # Android Studio / local machine
 .idea/
 *.iml

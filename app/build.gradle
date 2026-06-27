@@ -13,13 +13,19 @@ if (hasReleaseKeystore) {
 android {
     namespace "io.github.liuanxin.lunarclock"
     compileSdk 36
+    buildToolsVersion "36.1.0"
 
     defaultConfig {
         applicationId "io.github.liuanxin.lunarclock"
         minSdk 24
         targetSdk 36
-        versionCode 10001
-        versionName "1.0.1"
+        versionCode 10002
+        versionName "1.1.0"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     signingConfigs {
@@ -50,14 +56,5 @@ android {
 }
 
 dependencies {
-    implementation "androidx.core:core-ktx:1.18.0"
-    implementation "androidx.appcompat:appcompat:1.7.1"
-    constraints {
-        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0") {
-            because "Keep Kotlin stdlib artifacts aligned across AndroidX transitive dependencies."
-        }
-        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.0") {
-            because "Keep Kotlin stdlib artifacts aligned across AndroidX transitive dependencies."
-        }
-    }
+    // 微件只用 android.* 与 java.*，不依赖任何 AndroidX；Kotlin stdlib 由插件自动引入
 }

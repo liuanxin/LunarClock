@@ -1,83 +1,87 @@
 # LunarClock
 
-轻量的 Android 农历时钟桌面微件。它解决的是系统时钟微件不显示中国农历的问题：不做完整日历 App，不常驻后台，不联网，不显示 Launcher 图标。
+轻量的 Android 农历时钟桌面微件。它解决的是系统时钟微件不显示中国农历的问题:不做完整日历 App,不常驻后台,不联网,不显示 Launcher 图标。
 
 ## 功能
 
-- 桌面 App Widget，默认 4x1，可横向/纵向调整大小。
-- 大号 `HH:mm` 时间显示，分钟刷新交给系统 `TextClock`。
-- 高度足够时显示：
-  - 公历日期：`2026-01-01`
-  - 农历信息：`乙巳(蛇)-冬月十三`
-  - 星期：`周四`
+- 桌面 App Widget,默认 4x1,可横向/纵向调整大小。
+- 大号 `HH:mm` 时间显示,分钟刷新交给系统 `TextClock`。
+- 高度足够时显示:
+  - 公历日期:`2026-01-01`
+  - 农历信息:`乙巳(蛇)-冬月十三`
+  - 星期:`周四`
+- 二十四节气提前 3 天提示:临近节气时星期行追加显示「今天 / 明天 / 后天 + 节气名」,例如 `周四 · 后天立春`。
+- 农历与节气全部用天文算法实时计算(定朔 + 中气置闰、太阳黄经),覆盖 **1900–2200**,不依赖任何农历数据表。
 - 点击时间打开系统时钟/闹钟。
 - 点击日期/农历区域打开系统日历。
 - 无网络权限。
 - 无后台服务、无轮询、无 WorkManager。
-- 无 Launcher 图标，安装后从系统“小部件”入口添加。
+- 无 Launcher 图标,安装后从系统“小部件”入口添加。
 
 ## 截图
 
-小部件选择器预览：
+小部件选择器预览:
 
 <img src="docs/images/widget-picker-preview.webp" alt="小部件选择器预览" width="480">
 
-桌面实际效果：
+桌面实际效果:
 
 <img src="docs/images/home-screen-widget.webp" alt="桌面实际效果" width="480">
 
 ## 环境
 
-- Android Studio
+- Android Studio(需支持 AGP 9 的版本)
 - Android SDK 36
 - JDK 21
-- Gradle 8.11.1
-- AGP 8.10.1
+- Gradle 9.6.1
+- AGP 9.2.1
+- Kotlin(由 AGP 9 内置提供,无需独立 Kotlin 插件)
+- 源码语言:Kotlin,单文件实现
 
-如果系统默认 JDK 不是 21，请在构建时指定：
+如果系统默认 JDK 不是 21,请在构建时指定:
 
 ```bash
 JAVA_HOME=/path/to/jdk-21 ./gradlew :app:assembleDebug
 ```
 
-本项目的 Gradle wrapper 配置使用本地 distribution zip：
+本项目的 Gradle wrapper 配置使用本地 distribution zip:
 
 ```properties
-distributionUrl=./gradle-8.11.1-bin.zip
+distributionUrl=./gradle-9.6.1-bin.zip
 ```
 
-`gradle-8.11.1-bin.zip` 体积较大，不提交到仓库。构建前请下载或复制到：
+`gradle-9.6.1-bin.zip` 体积较大,不提交到仓库。构建前请下载或复制到:
 
 ```text
-gradle/wrapper/gradle-8.11.1-bin.zip
+gradle/wrapper/gradle-9.6.1-bin.zip
 ```
 
-可以从 Gradle 官方下载：
+可以从 Gradle 官方下载:
 
 ```bash
-curl -L -o gradle/wrapper/gradle-8.11.1-bin.zip \
-  https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
+curl -L -o gradle/wrapper/gradle-9.6.1-bin.zip \
+  https://services.gradle.org/distributions/gradle-9.6.1-bin.zip
 ```
 
 ## 构建
 
-Debug 包：
+Debug 包:
 
 ```bash
 ./gradlew :app:assembleDebug
 ```
 
-Release 包：
+Release 包:
 
 ```bash
 ./gradlew :app:assembleRelease
 ```
 
-如果仓库中没有本地 release keystore，`assembleRelease` 会生成未签名 release APK。个人安装测试可以直接使用 debug 包，正式发布需要配置自己的签名。
+如果仓库中没有本地 release keystore,`assembleRelease` 会生成未签名 release APK。个人安装测试可以直接使用 debug 包,正式发布需要配置自己的签名。
 
 ## 本地 release 签名
 
-创建本地 keystore：
+创建本地 keystore:
 
 ```bash
 mkdir -p keystore
@@ -89,7 +93,7 @@ keytool -genkeypair \
   -validity 10000
 ```
 
-创建 `keystore.properties`：
+创建 `keystore.properties`:
 
 ```properties
 storeFile=keystore/lunarclock-release.jks
@@ -98,29 +102,29 @@ keyAlias=lunarclock
 keyPassword=your_key_password
 ```
 
-然后重新构建：
+然后重新构建:
 
 ```bash
 ./gradlew :app:assembleRelease
 ```
 
-`keystore.properties` 和 `keystore/` 已在 `.gitignore` 中排除，不要提交到仓库。
+`keystore.properties` 和 `keystore/` 已在 `.gitignore` 中排除,不要提交到仓库。
 
 ## 安装和使用
 
-安装到已连接的设备：
+安装到已连接的设备:
 
 ```bash
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-或安装你自己签名后的 release 包：
+或安装你自己签名后的 release 包:
 
 ```bash
 adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
-安装后应用抽屉里不会出现图标。添加方式：
+安装后应用抽屉里不会出现图标。添加方式:
 
 1. 回到桌面。
 2. 长按空白区域。
@@ -128,7 +132,7 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 4. 搜索或找到“农历时钟”。
 5. 拖到桌面。
 
-卸载：
+卸载:
 
 ```bash
 adb uninstall io.github.liuanxin.lunarclock
@@ -136,52 +140,11 @@ adb uninstall io.github.liuanxin.lunarclock
 
 也可以在手机 `设置 -> 应用 -> 查看所有应用` 中搜索“农历时钟”卸载。
 
-## Google Play 发布考虑
-
-如果要发布到 Google Play，建议上传 AAB，而不是 APK。
-
-当前版本：
-
-```text
-versionCode 10001
-versionName 1.0.1
-```
-
-发布前确认已经配置本地 release keystore，然后生成 AAB：
-
-```bash
-./gradlew :app:bundleRelease
-```
-
-产物路径：
-
-```text
-app/build/outputs/bundle/release/app-release.aab
-```
-
-Play Console 中建议先走内部测试：
-
-1. 创建应用，应用名可用“农历时钟”。
-2. 填写应用内容、数据安全、内容分级、目标用户群体、广告声明。
-3. 声明应用不联网、不收集数据、不共享数据、无广告。
-4. 上传 `app-release.aab` 到内部测试轨道。
-5. 用测试账号安装验证小部件添加、时间刷新、点击时钟、点击日历。
-6. 验证无误后再提交正式版审核。
-
-正式发布需要准备：
-
-- 512x512 应用图标。
-- 1024x500 功能图。
-- 手机截图，建议包含小部件选择器和桌面实际效果。
-- 隐私政策页面，说明应用离线运行、不收集数据、不请求网络权限。
-- 保持包名不变：`io.github.liuanxin.lunarclock`。
-
-后续每次更新都必须增加 `versionCode`，例如 `10001`、`10002`；`versionName` 可以按语义版本递增，例如 `1.0.1`、`1.1.0`。
-
 ## 设计原则
 
 - 尽量接近系统时钟微件的观感。
-- 时间优先，农历信息作为补充。
-- 矮高度时只显示大时间，避免文字被裁剪。
-- 高度足够时显示完整日期、农历、星期。
-- 所有刷新都依赖系统 App Widget / 系统广播 / `TextClock`；跨天刷新用一次性 `AlarmManager` 兜底，不做后台常驻或轮询。
+- 时间优先,农历与节气信息作为补充。
+- 矮高度时只显示大时间,避免文字被裁剪。
+- 高度足够时显示完整日期、农历、星期,临近节气时在星期行追加提示。
+- 农历与节气用天文算法实时计算,不内置数据表,年份范围不受表限制。
+- 所有刷新都依赖系统 App Widget / 系统广播 / `TextClock`;跨天刷新用一次性 `AlarmManager` 兜底,不做后台常驻或轮询。
