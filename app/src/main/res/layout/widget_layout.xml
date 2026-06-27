@@ -10,21 +10,42 @@
     android:paddingEnd="12dp"
     android:paddingBottom="2dp">
 
-    <TextClock
-        android:id="@+id/time_clock"
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:clickable="true"
-        android:focusable="true"
-        android:fontFamily="sans"
-        android:format12Hour="HH:mm"
-        android:format24Hour="HH:mm"
-        android:gravity="center"
-        android:includeFontPadding="false"
-        android:singleLine="true"
-        android:textColor="#FFFFFFFF"
-        android:textSize="82sp"
-        android:textStyle="normal" />
+        android:layout_height="wrap_content">
+
+        <TextClock
+            android:id="@+id/time_clock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:clickable="true"
+            android:focusable="true"
+            android:fontFamily="sans"
+            android:format12Hour="HH:mm"
+            android:format24Hour="HH:mm"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:singleLine="true"
+            android:textColor="#FFFFFFFF"
+            android:textSize="82sp"
+            android:textStyle="normal" />
+
+        <TextView
+            android:id="@+id/toggle_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="6dp"
+            android:layout_toEndOf="@id/time_clock"
+            android:clickable="true"
+            android:focusable="true"
+            android:fontFamily="sans"
+            android:includeFontPadding="false"
+            android:singleLine="true"
+            android:textColor="#88FFFFFF"
+            android:textSize="13sp" />
+    </RelativeLayout>
 
     <LinearLayout
         android:id="@+id/calendar_zone"

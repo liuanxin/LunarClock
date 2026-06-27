@@ -19,20 +19,24 @@ import java.util.TimeZone
 
 private const val PREFS_NAME = "minimal_widget"
 private const val KEY_LAST_RENDERED_DATE = "last_rendered_date"
+private const val KEY_12_HOUR = "is_12_hour"
 private const val ACTION_REFRESH_DATE = "io.github.liuanxin.lunarclock.action.REFRESH_DATE"
+private const val ACTION_TOGGLE_FORMAT = "io.github.liuanxin.lunarclock.action.TOGGLE_FORMAT"
 private const val REQUEST_REFRESH_DATE = 1001
+private const val REQUEST_TOGGLE_FORMAT = 1002
 
 private val WEEK_NAMES = arrayOf("周日", "周一", "周二", "周三", "周四", "周五", "周六")
 
 // 收到这些广播时重新渲染微件
 private val REFRESH_ACTIONS = setOf(
     Intent.ACTION_DATE_CHANGED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED,
-    Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED, ACTION_REFRESH_DATE
+    Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED, ACTION_REFRESH_DATE, ACTION_TOGGLE_FORMAT
 )
 
-// 这些广播无视"今天已渲染"强制刷新
+// 这些广播无视"今天已渲染"强制刷新（切换格式需要当天重渲）
 private val FORCE_ACTIONS = setOf(
-    Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_MY_PACKAGE_REPLACED
+    Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_MY_PACKAGE_REPLACED,
+    ACTION_TOGGLE_FORMAT
 )
 
 // 0~2 天倒计时前缀，节气与节日共用
@@ -46,11 +50,13 @@ class MinimalWidgetProvider : AppWidgetProvider() {
             super.onReceive(context, intent)
             return
         }
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (action == ACTION_TOGGLE_FORMAT) {
+            prefs.edit().putBoolean(KEY_12_HOUR, !prefs.getBoolean(KEY_12_HOUR, false)).apply()
+        }
         val now = Calendar.getInstance()
         scheduleNextDateRefresh(context, now)
-        val last = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getString(KEY_LAST_RENDERED_DATE, null)
-        if (dateKey(now) == last && action !in FORCE_ACTIONS) {
+        if (dateKey(now) == prefs.getString(KEY_LAST_RENDERED_DATE, null) && action !in FORCE_ACTIONS) {
             return
         }
         val manager = AppWidgetManager.getInstance(context)
@@ -92,9 +98,7 @@ private fun buildViews(context: Context, now: Calendar, widgetId: Int, options: 
     views.setTextViewText(R.id.week_text, if (tip == null) weekName else "$weekName · $tip")
     val lunar = Lunar.format(now)
     views.setTextViewText(R.id.lunar_text, "${lunar.ganzhiYear}-${lunar.date}")
-    views.setCharSequence(R.id.time_clock, "setFormat12Hour", "HH:mm")
-    views.setCharSequence(R.id.time_clock, "setFormat24Hour", "HH:mm")
-    views.setString(R.id.time_clock, "setTimeZone", TimeZone.getDefault().id)
+    applyTimeFormat(context, views)
     applyTextSizes(views, options)
 
     views.setOnClickPendingIntent(
@@ -134,6 +138,7 @@ private fun scheduleNextDateRefresh(context: Context, now: Calendar) {
     am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextDateRefreshTime(now), refreshDatePendingIntent(context))
 }
 
+// 次日 0 点过 3 秒，用于跨天刷新日期/农历/节日
 private fun nextDateRefreshTime(now: Calendar): Long {
     val next = now.clone() as Calendar
     next.add(Calendar.DAY_OF_MONTH, 1)
@@ -152,6 +157,23 @@ private fun cancelNextDateRefresh(context: Context) {
 private fun refreshDatePendingIntent(context: Context): PendingIntent {
     val intent = Intent(context, MinimalWidgetProvider::class.java).setAction(ACTION_REFRESH_DATE)
     return PendingIntent.getBroadcast(context, REQUEST_REFRESH_DATE, intent, pendingIntentFlags())
+}
+
+private fun togglePendingIntent(context: Context): PendingIntent {
+    val intent = Intent(context, MinimalWidgetProvider::class.java).setAction(ACTION_TOGGLE_FORMAT)
+    return PendingIntent.getBroadcast(context, REQUEST_TOGGLE_FORMAT, intent, pendingIntentFlags())
+}
+
+// 时间显示：24 制 HH:mm，12 制 hh:mm；两种格式都设给 TextClock 以无视系统设置，
+// 格式固定从而保留自动分钟刷新。右侧角标显示并切换当前制式。
+private fun applyTimeFormat(context: Context, views: RemoteViews) {
+    val is12 = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getBoolean(KEY_12_HOUR, false)
+    val fmt = if (is12) "hh:mm" else "HH:mm"
+    views.setCharSequence(R.id.time_clock, "setFormat12Hour", fmt)
+    views.setCharSequence(R.id.time_clock, "setFormat24Hour", fmt)
+    views.setString(R.id.time_clock, "setTimeZone", TimeZone.getDefault().id)
+    views.setTextViewText(R.id.toggle_text, if (is12) "12h" else "24h")
+    views.setOnClickPendingIntent(R.id.toggle_text, togglePendingIntent(context))
 }
 
 private fun calendarIntent(timeMillis: Long): Intent {
@@ -175,6 +197,7 @@ private fun applyTextSizes(views: RemoteViews, options: Bundle?) {
     views.setTextViewTextSize(R.id.week_text, TypedValue.COMPLEX_UNIT_SP, clamp(12f * sideScale, 10f, 15f))
     views.setTextViewTextSize(R.id.time_clock, TypedValue.COMPLEX_UNIT_SP, clamp(82f * timeScale, 68f, 104f))
     views.setTextViewTextSize(R.id.lunar_text, TypedValue.COMPLEX_UNIT_SP, clamp(13f * sideScale, 10f, 16f))
+    views.setTextViewTextSize(R.id.toggle_text, TypedValue.COMPLEX_UNIT_SP, clamp(18f * sideScale, 14f, 22f))
     views.setViewVisibility(R.id.calendar_zone, if (height >= 92) View.VISIBLE else View.GONE)
 }
 
