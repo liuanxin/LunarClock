@@ -35,6 +35,9 @@ private val FORCE_ACTIONS = setOf(
     Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_MY_PACKAGE_REPLACED
 )
 
+// 0~2 天倒计时前缀，节气与节日共用
+private val DAY_PREFIX = arrayOf("今天", "明天", "后天")
+
 class MinimalWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent?) {
@@ -85,8 +88,8 @@ private fun buildViews(context: Context, now: Calendar, widgetId: Int, options: 
     val weekName = WEEK_NAMES[now.get(Calendar.DAY_OF_WEEK) - 1]
 
     views.setTextViewText(R.id.date_text, String.format(Locale.CHINA, "%04d-%02d-%02d", year, month, day))
-    val term = SolarTerm.upcoming(now)
-    views.setTextViewText(R.id.week_text, if (term == null) weekName else "$weekName · $term")
+    val tip = dayTip(now)
+    views.setTextViewText(R.id.week_text, if (tip == null) weekName else "$weekName · $tip")
     val lunar = Lunar.format(now)
     views.setTextViewText(R.id.lunar_text, "${lunar.ganzhiYear}-${lunar.date}")
     views.setCharSequence(R.id.time_clock, "setFormat12Hour", "HH:mm")
@@ -181,6 +184,22 @@ private fun readOption(options: Bundle?, key: String, fallback: Int): Int {
 }
 
 private fun clamp(v: Float, min: Float, max: Float) = maxOf(min, minOf(max, v))
+
+// 今天起 0~2 天内的节日 + 节气，按日期顺序拼成提示；都没有返回 null
+// 例：「今天国庆·中秋 · 明天处暑」；同名(清明节气=清明)自动去重，节日在前
+private fun dayTip(now: Calendar): String? {
+    val parts = mutableListOf<String>()
+    for (delta in 0..2) {
+        val cal = (now.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, delta) }
+        val names = LinkedHashSet<String>()
+        names.addAll(Festival.namesOf(cal))
+        SolarTerm.nameOf(cal)?.let { names.add(it) }
+        if (names.isNotEmpty()) {
+            parts.add(DAY_PREFIX[delta] + names.joinToString("·"))
+        }
+    }
+    return if (parts.isEmpty()) null else parts.joinToString(" · ")
+}
 
 private data class LunarText(val date: String, val ganzhiYear: String)
 
@@ -331,6 +350,12 @@ private object Lunar {
         return LunarText(month + DAYS[l.day - 1], "$ganzhi($animal)")
     }
 
+    // 返回农历 {月, 日, 是否闰月(0/1)}，供节日查询
+    fun monthDay(solar: Calendar): IntArray {
+        val l = convert(solar)
+        return intArrayOf(l.month, l.day, if (l.leap) 1 else 0)
+    }
+
     private fun convert(solar: Calendar): LunarDate {
         val y = solar.get(Calendar.YEAR)
         val m = solar.get(Calendar.MONTH) + 1
@@ -383,10 +408,8 @@ private object Lunar {
     }
 }
 
-// 二十四节气：今天起 0~2 天内最近的节气提示
+// 二十四节气
 private object SolarTerm {
-    private val PREFIX = arrayOf("今天", "明天", "后天")
-
     // 按太阳黄经排列，index = 黄经 / 15，0 = 春分(0°)
     private val NAMES = arrayOf(
         "春分", "清明", "谷雨", "立夏", "小满", "芒种",
@@ -395,19 +418,47 @@ private object SolarTerm {
         "冬至", "小寒", "大寒", "立春", "雨水", "惊蛰"
     )
 
-    // 返回如「后天立春」；3 天窗口内没有节气返回 null
-    fun upcoming(now: Calendar): String? {
-        val y = now.get(Calendar.YEAR)
-        val m = now.get(Calendar.MONTH) + 1
-        val d = now.get(Calendar.DAY_OF_MONTH)
-        val todayOrd = Astro.dayOrd(y, m, d)
+    // cal 当天若是某个节气，返回节气名，否则 null
+    fun nameOf(cal: Calendar): String? {
+        val y = cal.get(Calendar.YEAR)
+        val m = cal.get(Calendar.MONTH) + 1
+        val d = cal.get(Calendar.DAY_OF_MONTH)
+        val ord = Astro.dayOrd(y, m, d)
         val guessJd = Astro.julianDay(y, m, d) + 0.5
         val base = Math.floor(Astro.solarLongitude(guessJd) / 15.0).toInt()
-        // base = 刚过/当前节气，base+1 = 下一个；3 天窗口内最多命中一个
         for (k in base..base + 1) {
-            val delta = (Astro.solarTermOrd((k % 24) * 15.0, guessJd) - todayOrd).toInt()
-            if (delta in 0..2) return PREFIX[delta] + NAMES[k % 24]
+            if (Astro.solarTermOrd((k % 24) * 15.0, guessJd) == ord) return NAMES[k % 24]
         }
         return null
+    }
+}
+
+// 节日：公历按月日、农历按农历月日，名称用简称
+private object Festival {
+    // key = 月 * 100 + 日
+    private val SOLAR = mapOf(
+        101 to "元旦", 308 to "妇女节", 501 to "五一",
+        601 to "六一", 910 to "教师节", 1001 to "国庆"
+    )
+
+    // key = 农历月 * 100 + 农历日
+    private val LUNAR = mapOf(
+        101 to "春节", 115 to "元宵", 505 to "端午",
+        707 to "七夕", 815 to "中秋", 909 to "重阳", 1208 to "腊八"
+    )
+
+    // cal 当天的所有节日名（公历 + 农历，可能同天多个，如国庆+中秋）
+    fun namesOf(cal: Calendar): List<String> {
+        val names = mutableListOf<String>()
+        SOLAR[(cal.get(Calendar.MONTH) + 1) * 100 + cal.get(Calendar.DAY_OF_MONTH)]?.let { names.add(it) }
+        val lunar = Lunar.monthDay(cal)
+        if (lunar[2] == 0) {
+            LUNAR[lunar[0] * 100 + lunar[1]]?.let { names.add(it) }
+        }
+        // 除夕：次日为正月初一
+        val next = (cal.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 1) }
+        val nl = Lunar.monthDay(next)
+        if (nl[0] == 1 && nl[1] == 1 && nl[2] == 0) names.add("除夕")
+        return names
     }
 }
